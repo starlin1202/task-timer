@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>时间统计 (精简版)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#FF6B00",
+                        "brand-orange": "#FF6B00",
+                        "chart-1": "#FF6B00",
+                        "chart-2": "#FF9F5A",
+                        "chart-3": "#FFCC9D",
+                        "chart-4": "#FFE9D6",
+                        "background-main": "#ffffff",
+                        "surface-gray": "#f2f4f7",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "PingFang SC", "Microsoft YaHei", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f8fafc;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .ios-segmented-control {
+            background-color: #efefef;
+        }
+        .donut-container {
+            filter: drop-shadow(0 4px 12px rgba(255, 107, 0, 0.1));
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-slate-900 font-display">
+<div class="relative flex h-screen w-full max-w-[430px] mx-auto flex-col overflow-hidden bg-background-main border-x border-slate-100 shadow-2xl">
+<div class="flex items-center bg-background-main p-4 pb-2 justify-center sticky top-0 z-10">
+<h2 class="text-slate-900 text-[17px] font-semibold leading-tight text-center">时间统计</h2>
+</div>
+<div class="flex px-5 py-3">
+<div class="flex h-9 flex-1 items-center justify-center rounded-lg bg-slate-100 p-0.5">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-[7px] px-2 has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:text-brand-orange text-slate-500 text-[13px] font-semibold transition-all">
+<span class="truncate">日</span>
+<input checked="" class="hidden" name="timeframe" type="radio" value="Day"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-[7px] px-2 has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:text-brand-orange text-slate-500 text-[13px] font-semibold transition-all">
+<span class="truncate">周</span>
+<input class="hidden" name="timeframe" type="radio" value="Week"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-[7px] px-2 has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:text-brand-orange text-slate-500 text-[13px] font-semibold transition-all">
+<span class="truncate">月</span>
+<input class="hidden" name="timeframe" type="radio" value="Month"/>
+</label>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto hide-scrollbar px-6">
+<div class="flex flex-col items-center justify-center py-10">
+<div class="relative flex items-center justify-center w-60 h-60 donut-container">
+<svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+<circle class="text-slate-50" cx="50" cy="50" fill="transparent" r="42" stroke="currentColor" stroke-width="9"></circle>
+<circle cx="50" cy="50" fill="transparent" r="42" stroke="#FF6B00" stroke-dasharray="263.8" stroke-dashoffset="131.9" stroke-linecap="round" stroke-width="9"></circle>
+<circle cx="50" cy="50" fill="transparent" r="42" stroke="#FF9F5A" stroke-dasharray="263.8" stroke-dashoffset="204.4" stroke-linecap="round" stroke-width="9" transform="rotate(180 50 50)"></circle>
+<circle cx="50" cy="50" fill="transparent" r="42" stroke="#FFCC9D" stroke-dasharray="263.8" stroke-dashoffset="240.2" stroke-linecap="round" stroke-width="9" transform="rotate(270 50 50)"></circle>
+</svg>
+<div class="absolute flex flex-col items-center justify-center text-center">
+<p class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">总时长</p>
+<p class="text-slate-900 text-3xl font-bold tracking-tight">8小时 45分</p>
+</div>
+</div>
+</div>
+<div class="space-y-6 pb-12">
+<h3 class="text-slate-900 text-[17px] font-bold tracking-tight">分类统计</h3>
+<div class="flex flex-col gap-2.5">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="size-2.5 rounded-full bg-chart-1"></div>
+<span class="text-slate-800 font-semibold text-[15px]">工作</span>
+</div>
+<span class="text-slate-500 text-xs font-medium">4小时 20分 (45%)</span>
+</div>
+<div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-brand-orange rounded-full w-[45%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2.5">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="size-2.5 rounded-full bg-chart-2"></div>
+<span class="text-slate-800 font-semibold text-[15px]">学习</span>
+</div>
+<span class="text-slate-500 text-xs font-medium">2小时 15分 (25%)</span>
+</div>
+<div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-chart-2 rounded-full w-[25%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2.5">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="size-2.5 rounded-full bg-chart-3"></div>
+<span class="text-slate-800 font-semibold text-[15px]">健康</span>
+</div>
+<span class="text-slate-500 text-xs font-medium">1小时 30分 (20%)</span>
+</div>
+<div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-chart-3 rounded-full w-[20%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2.5">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="size-2.5 rounded-full bg-slate-200"></div>
+<span class="text-slate-800 font-semibold text-[15px]">其他</span>
+</div>
+<span class="text-slate-500 text-xs font-medium">40分 (10%)</span>
+</div>
+<div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-slate-200 rounded-full w-[10%]"></div>
+</div>
+</div>
+<div class="pt-8 pb-4 flex justify-center">
+<button class="flex items-center gap-2 text-slate-400 text-sm font-medium hover:text-orange-500 transition-colors py-2 px-6 rounded-full border border-slate-100">
+<span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+                        清除历史记录
+                    </button>
+</div>
+</div>
+</div>
+<div class="flex gap-2 border-t border-slate-50 bg-white/80 backdrop-blur-md px-12 pb-8 pt-3">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-400 hover:text-brand-orange transition-colors" href="#">
+<span class="material-symbols-outlined text-[28px]">home</span>
+<p class="text-[11px] font-medium tracking-tight">首页</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-brand-orange" href="#">
+<span class="material-symbols-outlined text-[28px] font-variation-fill">bar_chart</span>
+<p class="text-[11px] font-bold tracking-tight">统计</p>
+</a>
+</div>
+</div>
+
+</body></html>
