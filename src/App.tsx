@@ -1,15 +1,22 @@
+/**
+ * App 组件
+ * 主应用组件，包含路由和底部导航
+ */
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import RecordsPage from './pages/RecordsPage';
+import StatsPage from './pages/StatsPage';
+
+const PRIMARY_COLOR = '#F26522';
 
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="bg-background-main text-text-main font-display flex flex-col relative overflow-hidden h-screen max-w-[430px] mx-auto border-x border-slate-100 shadow-2xl">
+      <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-sans flex flex-col relative overflow-hidden h-screen max-w-lg mx-auto shadow-2xl">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/records" element={<RecordsPage />} />
+          <Route path="/stats" element={<StatsPage />} />
         </Routes>
         <BottomNav />
       </div>
@@ -17,48 +24,59 @@ const App: React.FC = () => {
   );
 };
 
+/**
+ * 底部导航栏组件
+ */
 const BottomNav: React.FC = () => {
   const location = useLocation();
   const isHome = location.pathname === '/';
-  const isRecords = location.pathname === '/records';
+  const isStats = location.pathname === '/stats';
 
   return (
-    <nav 
-      className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 pb-6 pt-3 px-12 z-20"
-      style={{ maxWidth: '430px', margin: '0 auto' }}
-    >
-      <div className="flex justify-around items-center">
-        <Link 
-          to="/" 
-          className="flex flex-col items-center gap-1"
-          style={{ color: isHome ? '#FF7A00' : '#94a3b8' }}
+    <nav className="absolute bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-gray-100 dark:border-gray-800 shadow-nav z-20">
+      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+        {/* 任务 Tab */}
+        <Link
+          to="/"
+          className={`flex flex-col items-center justify-center w-full h-full group transition-colors ${
+            isHome ? 'text-primary' : 'text-text-sub-light dark:text-text-sub-dark'
+          }`}
+          style={{ color: isHome ? PRIMARY_COLOR : undefined }}
         >
-          <span 
-            className="material-symbols-outlined font-bold text-[24px] leading-none"
-            style={{ fontVariationSettings: isHome ? "'FILL' 1, 'wght' 600" : "'FILL' 0, 'wght' 400" }}
+          <span
+            className={`material-icons-round text-2xl transition-all ${
+              isHome ? '' : 'group-hover:text-primary'
+            }`}
           >
-            home
+            playlist_add_check
           </span>
-          <span className={`text-[10px] ${isHome ? 'font-bold' : 'font-medium'}`}>
-            首页
+          <span className={`text-[10px] mt-1 font-medium ${isHome ? 'font-bold' : ''}`}>
+            任务
           </span>
         </Link>
-        <Link 
-          to="/records" 
-          className="flex flex-col items-center gap-1"
-          style={{ color: isRecords ? '#FF7A00' : '#94a3b8' }}
+
+        {/* 统计 Tab */}
+        <Link
+          to="/stats"
+          className={`flex flex-col items-center justify-center w-full h-full group transition-colors ${
+            isStats ? 'text-primary' : 'text-text-sub-light dark:text-text-sub-dark'
+          }`}
+          style={{ color: isStats ? PRIMARY_COLOR : undefined }}
         >
-          <span 
-            className="material-symbols-outlined text-[24px] leading-none"
-            style={{ fontVariationSettings: isRecords ? "'FILL' 1, 'wght' 600" : "'FILL' 0, 'wght' 400" }}
+          <span
+            className={`material-icons-round text-2xl transition-all ${
+              isStats ? '' : 'group-hover:text-primary'
+            }`}
           >
-            bar_chart
+            pie_chart
           </span>
-          <span className={`text-[10px] ${isRecords ? 'font-bold' : 'font-medium'}`}>
+          <span className={`text-[10px] mt-1 font-medium ${isStats ? 'font-bold' : ''}`}>
             统计
           </span>
         </Link>
       </div>
+      {/* Safe Area */}
+      <div className="h-6 bg-surface-light dark:bg-surface-dark" />
     </nav>
   );
 };

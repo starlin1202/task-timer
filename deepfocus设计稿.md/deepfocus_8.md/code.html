@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DeepFocus - 数据统计</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary-orange: #FF6B00;
+            --secondary-orange: #FFF0E0;
+            --orange-300: #FDBA74;
+            --orange-400: #FB923C;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --bg-page: #FFFFFF;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .donut-chart {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--primary-orange) 0% 67%, 
+                var(--orange-400) 67% 86%, 
+                var(--orange-300) 86% 95%, 
+                #FED7AA 95% 100%
+            );
+        }
+        .donut-hole {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 170px;
+            height: 170px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex justify-center min-h-screen bg-gray-50">
+<div class="w-full max-w-md h-screen bg-white shadow-xl relative flex flex-col overflow-hidden">
+<header class="px-5 py-4 flex justify-center items-center bg-white z-10 relative">
+<h1 class="text-lg font-bold tracking-tight text-[var(--text-primary)]">时间统计</h1>
+</header>
+<main class="flex-1 overflow-y-auto hide-scrollbar pb-32">
+<div class="px-5 mt-2 mb-8">
+<div class="flex bg-gray-100 p-1 rounded-xl">
+<button class="flex-1 py-1.5 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all">日</button>
+<button class="flex-1 py-1.5 text-sm font-medium rounded-lg bg-white text-[var(--primary-orange)] shadow-sm transition-all">周</button>
+<button class="flex-1 py-1.5 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-700 transition-all">月</button>
+</div>
+</div>
+<div class="px-5 mb-10">
+<div class="flex flex-col items-center justify-center py-4 relative">
+<div class="donut-chart">
+<div class="donut-hole">
+<span class="text-xs text-gray-400 font-medium mb-1">总时长</span>
+<div class="flex items-baseline gap-1">
+<span class="text-3xl font-bold text-gray-900 leading-none">42.5</span>
+<span class="text-sm font-bold text-gray-900">小时</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="px-5 mb-4">
+<h3 class="text-lg font-bold text-gray-900">任务分布</h3>
+</div>
+<div class="px-5 space-y-8">
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-[var(--primary-orange)]"></div>
+<span class="text-base font-medium text-gray-900">Python</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs text-gray-500">28小时30分 (67%)</span>
+<button class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-[var(--primary-orange)] border border-orange-100 rounded-md bg-orange-50/30 hover:bg-orange-50 transition-colors">
+<span class="material-symbols-outlined text-xs">edit</span>
+<span>修正时间</span>
+</button>
+</div>
+</div>
+<div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+<div class="bg-[var(--primary-orange)] h-full rounded-full" style="width: 67%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-orange-400"></div>
+<span class="text-base font-medium text-gray-900">阅读</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs text-gray-500">8小时00分 (19%)</span>
+<button class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-[var(--primary-orange)] border border-orange-100 rounded-md bg-orange-50/30 hover:bg-orange-50 transition-colors">
+<span class="material-symbols-outlined text-xs">edit</span>
+<span>修正时间</span>
+</button>
+</div>
+</div>
+<div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+<div class="bg-orange-400 h-full rounded-full" style="width: 19%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-orange-300"></div>
+<span class="text-base font-medium text-gray-900">健身</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs text-gray-500">4小时00分 (9%)</span>
+<button class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-[var(--primary-orange)] border border-orange-100 rounded-md bg-orange-50/30 hover:bg-orange-50 transition-colors">
+<span class="material-symbols-outlined text-xs">edit</span>
+<span>修正时间</span>
+</button>
+</div>
+</div>
+<div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+<div class="bg-orange-300 h-full rounded-full" style="width: 9%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-orange-200"></div>
+<span class="text-base font-medium text-gray-900">家务</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs text-gray-500">2小时00分 (5%)</span>
+<button class="flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-[var(--primary-orange)] border border-orange-100 rounded-md bg-orange-50/30 hover:bg-orange-50 transition-colors">
+<span class="material-symbols-outlined text-xs">edit</span>
+<span>修正时间</span>
+</button>
+</div>
+</div>
+<div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+<div class="bg-orange-200 h-full rounded-full" style="width: 5%"></div>
+</div>
+</div>
+</div>
+<div class="mt-7 mb-[52px] flex justify-center">
+<button class="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors">
+<span class="material-symbols-outlined text-lg">delete</span>
+<span class="text-sm">清除历史记录</span>
+</button>
+</div>
+</main>
+<nav class="bg-white border-t border-gray-100 px-6 py-3 pb-8 absolute bottom-0 w-full z-20">
+<div class="flex justify-around items-center">
+<button class="flex flex-col items-center gap-1 w-16 group">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 text-[26px]">edit_note</span>
+<span class="text-[10px] font-medium text-gray-400 group-hover:text-gray-600">任务</span>
+</button>
+<button class="flex flex-col items-center gap-1 w-16 group">
+<span class="material-symbols-outlined text-[var(--primary-orange)] text-[26px] fill-1">pie_chart</span>
+<span class="text-[10px] font-medium text-[var(--primary-orange)]">统计</span>
+</button>
+</div>
+</nav>
+<div class="absolute inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+<div class="w-full bg-white rounded-[16px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+<div class="p-5">
+<h2 class="text-lg font-bold text-center text-gray-900 mb-5">修正时间</h2>
+<div class="flex bg-gray-100 p-1 rounded-lg mb-6">
+<button class="flex-1 py-1.5 text-xs font-medium rounded text-gray-500 hover:text-gray-700 transition-all">今日</button>
+<button class="flex-1 py-1.5 text-xs font-medium rounded bg-white text-[var(--primary-orange)] shadow-sm transition-all">本周</button>
+<button class="flex-1 py-1.5 text-xs font-medium rounded text-gray-500 hover:text-gray-700 transition-all">本月</button>
+</div>
+<div class="space-y-4">
+<div>
+<label class="block text-xs font-medium text-gray-400 mb-1.5 ml-1">任务名称</label>
+<div class="w-full bg-gray-50 border border-gray-100 text-gray-400 py-3 px-4 rounded-xl text-sm">
+                        Python
+                    </div>
+</div>
+<div>
+<label class="block text-xs font-medium text-gray-400 mb-3 ml-1 text-center">本周专注时长</label>
+<div class="flex items-center justify-between bg-orange-50/50 rounded-2xl p-4 border border-orange-100/50">
+<button class="w-10 h-10 rounded-full bg-[var(--primary-orange)] text-white flex items-center justify-center active:scale-95 transition-transform shadow-sm">
+<span class="material-symbols-outlined text-2xl">remove</span>
+</button>
+<div class="text-center">
+<div class="text-2xl font-bold text-gray-900 leading-none">28<span class="text-sm font-medium text-gray-500 mx-0.5">小时</span>30<span class="text-sm font-medium text-gray-500 ml-0.5">分</span></div>
+</div>
+<button class="w-10 h-10 rounded-full bg-[var(--primary-orange)] text-white flex items-center justify-center active:scale-95 transition-transform shadow-sm">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+</div>
+<p class="mt-2 text-[10px] text-orange-400 text-center flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[12px]">info</span>
+                        修正将平均分摊至本周每日记录中
+                    </p>
+</div>
+</div>
+<div class="flex gap-3 mt-6">
+<button class="flex-1 py-3 text-sm font-medium text-gray-500 rounded-xl hover:bg-gray-50 transition-colors">
+                    取消
+                </button>
+<button class="flex-1 py-3 text-sm font-bold text-white bg-[var(--primary-orange)] rounded-xl shadow-lg shadow-orange-200 active:scale-[0.98] transition-all">
+                    保存
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

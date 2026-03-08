@@ -1,39 +1,73 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * HomePage 组件
+ * 首页 - 任务管理页面
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Task, ActiveTimer } from '../types';
-import { getTasks, setTasks, addTimeRecord, getActiveTimer, setActiveTimer, getTimeRecords } from '../utils/storage';
-import TaskForm from '../components/TaskForm';
+import {
+  CoreTask,
+  SideTask,
+  TimerSession,
+  TASK_ICON_COLORS,
+} from '../types';
+import {
+  getCoreTask,
+  setCoreTask,
+  deleteCoreTask,
+  getSideTasks,
+  addSideTask,
+  deleteSideTask,
+  reorderSideTasks,
+  addTimeRecord,
+  getTimerSession,
+  setTimerSession,
+  initializePresetTasks,
+} from '../utils/storage';
+import {
+  formatTime,
+  getTodayString,
+  calculateProgress,
+  getRemainingDays,
+  formatDateDisplay,
+  formatHours,
+} from '../utils/timeUtils';
+import CoreTaskForm from '../components/CoreTaskForm';
+import SideTaskForm from '../components/SideTaskForm';
+import GlobalTimerBar from '../components/GlobalTimerBar';
 
-const PRIMARY_COLOR = '#FF7A00';
-const PRIMARY_LIGHT = '#FFF7ED';
-
-const TASK_ICON_COLORS = [
-  { bg: '#EFF6FF', text: '#3B82F6' },
-  { bg: '#FAF5FF', text: '#A855F7' },
-  { bg: '#FFF7ED', text: '#F97316' },
-  { bg: '#FFF7ED', text: '#FF7A00' },
-  { bg: '#ECFDF5', text: '#10B981' },
-  { bg: '#FFFBEB', text: '#F59E0B' },
-];
+const PRIMARY_COLOR = '#F26522';
+const PRIMARY_LIGHT = '#FFF3E0';
 
 const HomePage: React.FC = () => {
-  const [tasks, setTasksState] = useState<Task[]>([]);
-  const [activeTimer, setActiveTimerState] = useState<ActiveTimer | null>(null);
-  const [showTaskForm, setShowTaskForm] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // 数据状态
+  const [coreTask, setCoreTaskState] = useState<CoreTask | null>(null);
+  const [sideTasks, setSideTasksState] = useState<SideTask[]>([]);
+  const [timerSession, setTimerSessionState] = useState<TimerSession | null>(null);
+  const [activeTaskName, setActiveTaskName] = useState('');
+
+  // UI 状态
+  const [showCoreTaskForm, setShowCoreTaskForm] = useState(false);
+  const [showSideTaskForm, setShowSideTaskForm] = useState(false);
+  const [editingCoreTask, setEditingCoreTask] = useState<CoreTask | null>(null);
   const [, forceUpdate] = useState({});
 
+  // 初始化数据
   useEffect(() => {
-    setTasksState(getTasks());
-    const savedTimer = getActiveTimer();
-    if (savedTimer) {
-      setActiveTimerState(savedTimer);
+    initializePresetTasks();
+    setCoreTaskState(getCoreTask());
+    setSideTasksState(getSideTasks());
+    const session = getTimerSession();
+    if (session) {
+      setTimerSessionState(session);
+      updateActiveTaskName(session);
     }
   }, []);
 
+  // 计时器更新
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (activeTimer && !activeTimer.isPaused) {
+    if (timerSession?.isRunning && !timerSession.isPaused) {
       interval = setInterval(() => {
         forceUpdate({});
       }, 1000);
@@ -41,418 +75,438 @@ const HomePage: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeTimer]);
+  }, [timerSession]);
 
-  const getCurrentElapsedTime = () => {
-    if (!activeTimer) return 0;
-    if (activeTimer.isPaused) {
-      return activeTimer.elapsed;
+  // 更新活跃任务名称
+  const updateActiveTaskName = (session: TimerSession) => {
+    if (session.taskType === 'core') {
+      const task = getCoreTask();
+      setActiveTaskName(task?.name || '');
+    } else {
+      const tasks = getSideTasks();
+      const task = tasks.find(t => t.id === session.taskId);
+      setActiveTaskName(task?.name || '');
     }
-    const now = new Date();
-    return now.getTime() - activeTimer.startTime.getTime() - activeTimer.totalPausedDuration;
   };
 
-  const startTimer = (taskId: string) => {
-    const timer: ActiveTimer = {
+  // 开始计时
+  const startTimer = (taskId: string, taskType: 'core' | 'side') => {
+    const session: TimerSession = {
       taskId,
-      startTime: new Date(),
-      elapsed: 0,
+      taskType,
+      startTime: Date.now(),
+      elapsedBeforePause: 0,
+      isRunning: true,
       isPaused: false,
-      totalPausedDuration: 0,
     };
-    setActiveTimerState(timer);
-    setActiveTimer(timer);
+    setTimerSessionState(session);
+    setTimerSession(session);
+    updateActiveTaskName(session);
   };
 
-  const togglePauseResume = () => {
-    if (!activeTimer) return;
-    const now = new Date();
-    let updatedTimer: ActiveTimer;
-    
-    if (activeTimer.isPaused) {
-      updatedTimer = {
-        ...activeTimer,
+  // 暂停/继续
+  const togglePauseResume = useCallback(() => {
+    if (!timerSession) return;
+
+    let updatedSession: TimerSession;
+
+    if (timerSession.isPaused) {
+      // 继续计时
+      updatedSession = {
+        ...timerSession,
+        startTime: Date.now(),
         isPaused: false,
-        pauseTime: undefined,
       };
     } else {
-      const elapsed = getCurrentElapsedTime();
-      updatedTimer = {
-        ...activeTimer,
+      // 暂停计时
+      const now = Date.now();
+      const elapsed = now - timerSession.startTime;
+      updatedSession = {
+        ...timerSession,
+        elapsedBeforePause: timerSession.elapsedBeforePause + elapsed,
         isPaused: true,
-        elapsed,
-        pauseTime: now,
       };
     }
-    
-    setActiveTimerState(updatedTimer);
-    setActiveTimer(updatedTimer);
+
+    setTimerSessionState(updatedSession);
+    setTimerSession(updatedSession);
+  }, [timerSession]);
+
+  // 停止计时
+  const stopTimer = useCallback(() => {
+    if (!timerSession) return;
+
+    const now = Date.now();
+    const elapsed = timerSession.isPaused
+      ? timerSession.elapsedBeforePause
+      : now - timerSession.startTime + timerSession.elapsedBeforePause;
+
+    const minutes = Math.round(elapsed / 60000);
+
+    if (minutes > 0) {
+      addTimeRecord({
+        taskId: timerSession.taskId,
+        taskType: timerSession.taskType,
+        date: getTodayString(),
+        duration: minutes,
+        isManual: false,
+      });
+
+      // 刷新数据
+      setCoreTaskState(getCoreTask());
+      setSideTasksState(getSideTasks());
+    }
+
+    setTimerSessionState(null);
+    setTimerSession(null);
+    setActiveTaskName('');
+  }, [timerSession]);
+
+  // 保存核心任务
+  const handleSaveCoreTask = (task: CoreTask) => {
+    setCoreTask(task);
+    setCoreTaskState(task);
+    setShowCoreTaskForm(false);
+    setEditingCoreTask(null);
   };
 
-  const stopTimer = () => {
-    if (!activeTimer) return;
-    const totalDuration = getCurrentElapsedTime();
-    
-    addTimeRecord({
-      taskId: activeTimer.taskId,
-      startTime: activeTimer.startTime,
-      endTime: new Date(),
-      duration: totalDuration,
-      date: new Date(),
-    });
-    
-    setActiveTimerState(null);
-    setActiveTimer(null);
-    
-    // 强制刷新以更新今日计时显示
-    forceUpdate({});
+  // 删除核心任务
+  const handleDeleteCoreTask = () => {
+    // 使用 setTimeout 确保 confirm 不会阻塞渲染
+    setTimeout(() => {
+      const confirmed = window.confirm('确定要删除核心任务吗？已记录的时间仍会保留。');
+      if (confirmed) {
+        deleteCoreTask();
+        setCoreTaskState(null);
+        setShowCoreTaskForm(false);
+        setEditingCoreTask(null);
+      }
+    }, 0);
   };
 
-  const handleAddTask = (taskData: Omit<Task, 'id' | 'createdAt'>) => {
-    const newTask = {
-      ...taskData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-    const updatedTasks = [...tasks, newTask];
-    setTasksState(updatedTasks);
-    setTasks(updatedTasks);
-    setShowTaskForm(false);
+  // 添加非核心任务
+  const handleAddSideTask = (name: string, icon: string) => {
+    addSideTask({ name, icon });
+    setSideTasksState(getSideTasks());
+    setShowSideTaskForm(false);
   };
 
-  const handleUpdateTask = (updatedTask: Task) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    );
-    setTasksState(updatedTasks);
-    setTasks(updatedTasks);
-    setEditingTask(null);
-    setShowTaskForm(false);
-  };
+  // 删除非核心任务
+  const handleDeleteSideTask = (taskId: string, taskName: string) => {
+    if (window.confirm(`确定要删除「${taskName}」吗？已记录的时间仍会保留在统计中。`)) {
+      deleteSideTask(taskId);
+      setSideTasksState(getSideTasks());
 
-  const handleDeleteTask = (taskId: string, taskName: string) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    setTasksState(updatedTasks);
-    setTasks(updatedTasks);
-    
-    // 如果删除的是正在进行的任务，则停止计时器
-    if (activeTimer && activeTimer.taskId === taskId) {
-      setActiveTimerState(null);
-      setActiveTimer(null);
+      // 如果删除的是正在计时的任务，停止计时
+      if (timerSession?.taskId === taskId) {
+        stopTimer();
+      }
     }
   };
 
-  // 处理拖拽结束事件
+  // 拖拽排序
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
-    
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-    
-    if (sourceIndex === destinationIndex) return;
-    
-    // 重新排序任务列表
-    const reorderedTasks = Array.from(tasks);
-    const [removed] = reorderedTasks.splice(sourceIndex, 1);
-    reorderedTasks.splice(destinationIndex, 0, removed);
-    
-    setTasksState(reorderedTasks);
-    setTasks(reorderedTasks);
+    if (result.source.index === result.destination.index) return;
+
+    const taskIds = sideTasks.map(t => t.id);
+    const [removed] = taskIds.splice(result.source.index, 1);
+    taskIds.splice(result.destination.index, 0, removed);
+
+    reorderSideTasks(taskIds);
+    setSideTasksState(getSideTasks());
   };
 
-  const getTaskIconColor = (index: number) => {
-    return TASK_ICON_COLORS[index % TASK_ICON_COLORS.length];
+  // 检查任务是否正在计时
+  const isTaskActive = (taskId: string, taskType: 'core' | 'side') => {
+    return timerSession?.taskId === taskId && timerSession?.taskType === taskType;
   };
-
-  const getMaterialIcon = (task: Task) => {
-    const iconMap: Record<string, string> = {
-      '📚': 'menu_book',
-      '🎮': 'sports_esports',
-      '🍽️': 'restaurant',
-      '📖': 'auto_stories',
-      '💼': 'work',
-      '🛍️': 'shopping_cart',
-      '👶': 'child_friendly',
-      '🏃': 'fitness_center',
-      '🧘': 'self_improvement',
-      '🎨': 'brush',
-      '🎸': 'headset',
-      '💻': 'laptop_mac',
-      '🚗': 'directions_car',
-      '🏠': 'home',
-      '🐶': 'pets',
-      '🐱': 'pets',
-      '🌺': 'local_florist',
-      '🍎': 'local_cafe',
-      '⚽': 'sports_soccer',
-      '🎬': 'movie',
-      '☕': 'coffee',
-      '📷': 'camera_alt',
-      '🔥': 'local_fire_department',
-    };
-    return iconMap[task.icon] || 'task_alt';
-  };
-
-  const formatTimeValue = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return { hours, minutes, seconds };
-  };
-
-  // 计算任务今日的计时时间（毫秒）
-  const getTodayTimeForTask = (taskId: string): number => {
-    const records = getTimeRecords();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayRecords = records.filter(record => {
-      const recordDate = new Date(record.date);
-      recordDate.setHours(0, 0, 0, 0);
-      return record.taskId === taskId && recordDate.getTime() === today.getTime();
-    });
-    
-    return todayRecords.reduce((total, record) => total + record.duration, 0);
-  };
-
-  // 格式化今日计时时间为可读字符串
-  const formatTodayTime = (ms: number): string => {
-    if (ms === 0) return '0m';
-    const totalMinutes = Math.floor(ms / 60000);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    
-    if (hours > 0) {
-      return `${hours}小时 ${minutes}分`;
-    }
-    return `${minutes}分`;
-  };
-
-  const activeTask = activeTimer ? tasks.find(t => t.id === activeTimer.taskId) : null;
-  const elapsedTime = getCurrentElapsedTime();
-  const { hours, minutes, seconds } = formatTimeValue(elapsedTime);
 
   return (
-    <div className="flex flex-col h-full relative">
-      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-slate-100 flex-shrink-0">
-        <div className="flex items-center justify-center px-5 py-3">
-          <h1 className="text-base font-bold tracking-tight">任务计时</h1>
-        </div>
+    <div className="flex flex-col h-full relative bg-background-light dark:bg-background-dark">
+      {/* Header */}
+      <header className="pt-6 pb-4 px-4 flex justify-center items-center sticky top-0 z-10 bg-surface-light dark:bg-surface-dark">
+        <h1 className="text-xl font-medium tracking-wide text-text-main-light dark:text-text-main-dark">
+          深度聚焦
+        </h1>
       </header>
-      
-      <main className="flex-1 overflow-y-auto px-5 pb-32">
-        {activeTimer && activeTask && (
-          <section className="mt-4 mb-6">
-            <div className="bg-white card-shadow border border-slate-100 rounded-2xl p-5">
-              <div className="flex flex-col items-center text-center">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span 
-                      className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                      style={{ backgroundColor: PRIMARY_COLOR }}
-                    ></span>
-                    <span 
-                      className="relative inline-flex rounded-full h-2.5 w-2.5"
-                      style={{ backgroundColor: PRIMARY_COLOR }}
-                    ></span>
-                  </span>
-                  <span 
-                    className="text-xl font-extrabold uppercase tracking-widest"
-                    style={{ color: PRIMARY_COLOR }}
+
+      {/* Global Timer Bar */}
+      <GlobalTimerBar
+        session={timerSession}
+        taskName={activeTaskName}
+        onPauseResume={togglePauseResume}
+        onStop={stopTimer}
+      />
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto px-4 pb-32">
+        {/* Core Task Section */}
+        <section className="mb-8">
+          <h3 className="text-lg font-bold mb-3 text-text-main-light dark:text-text-main-dark">
+            核心任务
+          </h3>
+
+          {coreTask ? (
+            <div
+              className={`bg-surface-light dark:bg-surface-dark rounded-3xl p-5 shadow-soft relative overflow-hidden ${
+                isTaskActive(coreTask.id, 'core')
+                  ? 'border-2 border-primary'
+                  : 'border border-gray-100 dark:border-gray-800'
+              }`}
+              style={isTaskActive(coreTask.id, 'core') ? { boxShadow: '0 10px 25px -5px rgba(242, 101, 34, 0.15)' } : {}}
+            >
+              {/* Task Header */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center space-x-2">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
+                    {coreTask.name}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setEditingCoreTask(coreTask);
+                      setShowCoreTaskForm(true);
+                    }}
+                    className="text-gray-400 hover:text-primary transition-colors flex items-center justify-center"
                   >
-                    {activeTimer.isPaused ? '已暂停' : '正在计时'}
-                  </span>
-                </div>
-                <h2 className="text-lg font-bold mb-5 text-slate-700">{activeTask.name}</h2>
-                <div className="flex gap-2 mb-6 w-full">
-                  <TimeUnit value={hours} label="时" />
-                  <TimeUnit value={minutes} label="分" />
-                  <TimeUnit value={seconds} label="秒" />
-                </div>
-                <div className="flex w-full gap-3">
-                  <button 
-                    onClick={togglePauseResume}
-                    className="flex-1 h-12 rounded-xl bg-slate-100 font-bold text-sm text-slate-700 flex items-center justify-center gap-2 active:bg-slate-200 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[24px] leading-none">
-                      {activeTimer.isPaused ? 'play_arrow' : 'pause'}
-                    </span>
-                    <span>{activeTimer.isPaused ? '继续' : '暂停'}</span>
+                    <span className="material-symbols-outlined text-[20px]">edit</span>
                   </button>
-                  <button 
+                </div>
+
+                {isTaskActive(coreTask.id, 'core') ? (
+                  <button
                     onClick={stopTimer}
-                    className="flex-1 h-12 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 active:opacity-90 transition-all"
-                    style={{ 
-                      backgroundColor: PRIMARY_COLOR,
-                      boxShadow: '0 10px 15px -3px rgba(255, 122, 0, 0.3)'
+                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform bg-white border-2"
+                    style={{
+                      borderColor: PRIMARY_COLOR,
+                      boxShadow: '0 10px 15px -3px rgba(242, 101, 34, 0.3)',
                     }}
                   >
-                    <span className="material-symbols-outlined text-[24px] leading-none">stop</span>
-                    <span>停止</span>
+                    <span className="material-icons-round text-2xl" style={{ color: PRIMARY_COLOR }}>stop</span>
                   </button>
+                ) : coreTask.status === 'active' ? (
+                  <button
+                    onClick={() => startTimer(coreTask.id, 'core')}
+                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform"
+                    style={{
+                      backgroundColor: PRIMARY_COLOR,
+                      boxShadow: '0 10px 15px -3px rgba(242, 101, 34, 0.3)',
+                    }}
+                  >
+                    <span className="material-icons-round text-white text-2xl ml-0.5">play_arrow</span>
+                  </button>
+                ) : (
+                  <span className="text-sm text-gray-400">
+                    {coreTask.status === 'abandoned' ? '已放弃' : '已归档'}
+                  </span>
+                )}
+              </div>
+
+              {/* Progress */}
+              <div className="flex flex-row justify-between items-end text-sm text-text-sub-light dark:text-text-sub-dark mb-2">
+                <div className="text-gray-600 font-medium">已累计投入时长</div>
+                <div className="text-right">
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">
+                    {Math.round(coreTask.accumulatedHours)}
+                  </span>
+                  <span className="text-gray-400 font-normal"> / {coreTask.targetHours} 小时</span>
                 </div>
               </div>
+
+              {/* Progress Bar */}
+              <div className="w-full h-3 bg-gray-100 dark:bg-gray-700 rounded-full mb-3 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${calculateProgress(coreTask.accumulatedHours, coreTask.targetHours)}%`,
+                    backgroundColor: PRIMARY_COLOR,
+                    opacity: isTaskActive(coreTask.id, 'core') ? 1 : 0.6,
+                  }}
+                />
+              </div>
+
+              {/* Task Info */}
+              <div className="text-[14px] font-light text-text-sub-light dark:text-text-sub-dark">
+                <span>
+                  到期日 <span className="text-primary font-medium">{formatDateDisplay(coreTask.endAt)}</span> (共计<span className="text-primary font-medium">{coreTask.totalDays || getRemainingDays(coreTask.endAt)}</span>天)
+                  {coreTask.dailyGoal && <>，每天计划投入 <span className="text-primary font-medium">{coreTask.dailyGoal}</span> 小时</>}
+                </span>
+              </div>
             </div>
-          </section>
-        )}
-        
-        <section>
-          <div className="flex items-center mb-4">
-            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">我的任务</h3>
-          </div>
-          <DragDropContext 
-              onDragEnd={handleDragEnd}
-              onDragStart={() => {}}
-              onDragUpdate={() => {}}
+          ) : (
+            // Empty State
+            <button
+              onClick={() => {
+                setEditingCoreTask(null);
+                setShowCoreTaskForm(true);
+              }}
+              className="w-full aspect-[16/9] bg-white dark:bg-surface-dark border-2 border-dashed border-primary/40 dark:border-primary/30 rounded-3xl flex flex-col items-center justify-center p-6 transition-all active:scale-[0.98] group shadow-sm"
             >
-              <Droppable droppableId="task-list" direction="vertical">
-                {(provided) => (
-                  <div 
-                    className="grid grid-cols-2 gap-3"
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                  >
-                    {tasks.map((task, index) => {
-                    const colors = getTaskIconColor(index);
-                    const isActive = activeTimer?.taskId === task.id;
-                    const todayTime = getTodayTimeForTask(task.id);
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center shadow-soft mb-3 group-hover:shadow-lg transition-shadow"
+                style={{ backgroundColor: PRIMARY_COLOR }}
+              >
+                <span className="material-icons-round text-white text-4xl">add</span>
+              </div>
+              <span className="text-lg font-bold mb-1" style={{ color: PRIMARY_COLOR }}>
+                点击添加核心任务
+              </span>
+              <span className="text-sm text-text-sub-light dark:text-text-sub-dark font-light">
+                设定一个聚焦目标，见证自我成长
+              </span>
+            </button>
+          )}
+        </section>
+
+        {/* Side Tasks Section */}
+        <section className="flex-1">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-text-main-light dark:text-text-main-dark">
+              其他任务
+            </h3>
+            <button
+              onClick={() => setShowSideTaskForm(true)}
+              className="w-9 h-9 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <span className="material-icons-round text-gray-600 dark:text-gray-300 text-xl">add</span>
+            </button>
+          </div>
+
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="side-tasks" direction="horizontal">
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="grid grid-cols-3 gap-2.5 pb-6"
+                >
+                  {sideTasks.map((task, index) => {
+                    const isActive = isTaskActive(task.id, 'side');
+
                     return (
                       <Draggable key={task.id} draggableId={task.id} index={index}>
                         {(provided, snapshot) => (
-                          <div 
+                          <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`bg-white card-shadow p-3.5 rounded-xl flex flex-col justify-between h-[120px] border relative transition-all ${
-                              snapshot.isDragging ? 'shadow-lg ring-2 ring-orange-200 z-10' : ''
-                            }`}
-                            style={{ 
-                              borderColor: isActive ? 'rgba(255, 122, 0, 0.2)' : '#f1f5f9',
-                              borderWidth: isActive ? '2px' : '1px',
-                              ...provided.draggableProps.style
-                            }}
+                            className={`bg-surface-light dark:bg-surface-dark rounded-xl flex flex-col shadow-sm p-2 text-center transition-all ${
+                              isActive
+                                ? 'border-2 border-primary/60'
+                                : 'border border-gray-100 dark:border-gray-800'
+                            } ${snapshot.isDragging ? 'shadow-lg z-10' : ''}`}
                           >
-                            <div className="flex justify-between items-start">
-                              <div 
-                                className="size-8 rounded-lg flex items-center justify-center"
-                                style={{ backgroundColor: colors.bg, color: colors.text }}
+                            {/* Icon and Name */}
+                            <div className="flex flex-col items-center mb-2">
+                              <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center mb-1"
+                                style={{ backgroundColor: task.color.bg, color: task.color.text }}
                               >
-                                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 0" }}>
-                                  {getMaterialIcon(task)}
-                                </span>
+                                <span className="material-icons-round text-lg">{task.icon}</span>
                               </div>
-                              <button 
-                                onClick={() => !isActive && startTimer(task.id)}
-                                className="px-2.5 py-1 rounded-full flex items-center justify-center gap-1 transition-colors border"
-                                style={{
-                                  backgroundColor: isActive ? PRIMARY_COLOR : '#f8fafc',
-                                  color: isActive ? '#ffffff' : '#0f172a',
-                                  borderColor: isActive ? PRIMARY_COLOR : '#f1f5f9'
-                                }}
+                              <span className="text-[12px] font-bold text-gray-800 dark:text-gray-100 truncate w-full px-1">
+                                {task.name}
+                              </span>
+                            </div>
+
+                            {/* Start Button */}
+                            {isActive ? (
+                              <button
+                                onClick={stopTimer}
+                                className="w-full py-1.5 rounded-full flex items-center justify-center space-x-0.5 mb-2 active:scale-95 transition-transform"
+                                style={{ backgroundColor: PRIMARY_COLOR }}
                               >
-                                <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                  {isActive ? 'timer' : 'play_arrow'}
+                                <span className="material-icons-round text-white text-[14px]">
+                                  stop
                                 </span>
-                                <span className="text-[10px] font-bold">
-                                  {isActive ? '进行中' : '开始'}
+                                <span className="text-[11px] font-bold text-white">
+                                  停止
                                 </span>
                               </button>
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm text-slate-800">{task.name}</h4>
-                              <p className="text-[10px] text-slate-400 mt-0.5">今日: {formatTodayTime(todayTime)}</p>
-                            </div>
-                            <div className="absolute bottom-4 right-4 flex gap-1">
-                              <button 
-                                onClick={() => handleDeleteTask(task.id, task.name)}
-                                className="size-6 rounded-full flex items-center justify-center transition-colors hover:bg-red-50"
-                                style={{
-                                  backgroundColor: '#fff5f5', // Light red background
-                                  color: '#ff0000' // Red text color
-                                }}
-                                title={`删除任务 "${task.name}"`}
+                            ) : (
+                              <button
+                                onClick={() => startTimer(task.id, 'side')}
+                                className="w-full py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center space-x-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors active:scale-95 mb-2"
                               >
-                                <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                <span className="material-icons-round text-gray-600 dark:text-gray-400 text-[14px]">
+                                  play_arrow
+                                </span>
+                                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-400">
+                                  开始
+                                </span>
+                              </button>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex justify-between items-center px-1 border-t border-gray-100 dark:border-gray-800 pt-1.5">
+                              <div
+                                {...provided.dragHandleProps}
+                                className="text-gray-400 dark:text-gray-500 cursor-grab active:cursor-grabbing"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">
+                                  drag_indicator
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteSideTask(task.id, task.name)}
+                                className="text-red-500 dark:text-red-400 hover:text-red-600 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">
                                   delete
                                 </span>
                               </button>
-                              <div 
-                                {...provided.dragHandleProps}
-                                className="size-6 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors hover:bg-slate-100 select-none touch-none"
-                                style={{
-                                  backgroundColor: '#f1f5f9', // Light gray background
-                                  color: '#64748b', // Slate gray color
-                                  WebkitUserSelect: 'none',
-                                  userSelect: 'none',
-                                  touchAction: 'none'
-                                }}
-                                title="拖动以调整顺序"
-                              >
-                                <span className="material-symbols-outlined text-xs pointer-events-none" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                  drag_handle
-                                </span>
-                              </div>
                             </div>
                           </div>
                         )}
                       </Draggable>
                     );
                   })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
           </DragDropContext>
         </section>
       </main>
-      
-      {/* Floating Action Button - Positioned relative to the container */}
-      <button 
-        onClick={() => {
-          setEditingTask(null);
-          setShowTaskForm(true);
-        }}
-        className="absolute size-12 rounded-full text-white flex items-center justify-center active:scale-95 transition-transform z-30"
-        style={{ 
-          backgroundColor: PRIMARY_COLOR,
-          boxShadow: '0 10px 25px -5px rgba(255, 122, 0, 0.4)',
-          bottom: '80px',
-          right: '16px'
-        }}
-      >
-        <span className="material-symbols-outlined text-2xl font-bold">add</span>
-      </button>
-      
-      {showTaskForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
-          <div className="relative w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl">
-            <div className="px-6 pt-7 pb-6">
-              <TaskForm 
-                task={editingTask}
-                onSave={editingTask ? handleUpdateTask : handleAddTask}
-                onCancel={() => {
-                  setShowTaskForm(false);
-                  setEditingTask(null);
-                }}
-              />
-            </div>
-          </div>
+
+      {/* Core Task Form Modal */}
+      {showCoreTaskForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-[2px]">
+          <CoreTaskForm
+            task={editingCoreTask}
+            onSave={handleSaveCoreTask}
+            onCancel={() => {
+              setShowCoreTaskForm(false);
+              setEditingCoreTask(null);
+            }}
+            onDelete={editingCoreTask ? handleDeleteCoreTask : undefined}
+          />
         </div>
       )}
+
+      {/* Side Task Form Modal */}
+      {showSideTaskForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-[2px]">
+          <SideTaskForm
+            onSave={handleAddSideTask}
+            onCancel={() => setShowSideTaskForm(false)}
+          />
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.5;
+            transform: scale(0.9);
+          }
+        }
+      `}</style>
     </div>
   );
 };
-
-const TimeUnit: React.FC<{ value: number; label: string }> = ({ value, label }) => (
-  <div className="flex-1 flex flex-col items-center gap-1.5">
-    <div className="w-full h-16 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100">
-      <span className="text-2xl font-mono font-bold text-slate-800">
-        {String(value).padStart(2, '0')}
-      </span>
-    </div>
-    <span className="text-[9px] uppercase font-bold text-slate-400">{label}</span>
-  </div>
-);
 
 export default HomePage;

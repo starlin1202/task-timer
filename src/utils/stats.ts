@@ -1,150 +1,183 @@
-import { TimeRecord, Task } from '../types';
-import { 
-  getTodayStart, 
-  getWeekStart, 
-  getMonthStart, 
-  isSameDay,
-  dateDiff 
-} from '../utils/timeUtils';
-import { getTimeRecords, getTasks } from '../utils/storage';
+/**
+ * Stats 模块
+ * 统计数据计算工具函数
+ */
 
-// 按日汇总统计数据
+import { TimeRecord, TaskStatItem, StatsPeriod, TaskType } from '../types';
+import { getTimeRecords, getCoreTask, getSideTasks } from './storage';
+import { isThisWeek, isThisMonth, isToday, formatDateToString, isSameDay, parseDateString } from './timeUtils';
+
+/**
+ * 按日汇总统计数据
+ * @param date 指定日期，默认为今天
+ * @returns 任务ID到总时长的映射
+ */
 export const getDailyStats = (date: Date = new Date()): Record<string, number> => {
-  const startOfDay = new Date(date);
-  startOfDay.setHours(0, 0, 0, 0);
-  
-  const endOfDay = new Date(date);
-  endOfDay.setHours(23, 59, 59, 999);
-  
   const records = getTimeRecords();
-  const dailyRecords = records.filter(
-    record => 
-      record.date >= startOfDay && 
-      record.date <= endOfDay && 
-      record.duration > 0
-  );
+
+  const stats: Record<string, number> = {};
+  records
+    .filter(record => {
+      // 使用 isSameDay 比较日期，避免字符串格式问题
+      const recordDate = parseDateString(record.date);
+      return isSameDay(recordDate, date);
+    })
+    .forEach(record => {
+      if (!stats[record.taskId]) {
+        stats[record.taskId] = 0;
+      }
+      stats[record.taskId] += record.duration * 60 * 1000; // 转换为毫秒
+    });
+
+  return stats;
+};
+
+/**
+ * 按周汇总统计数据
+ * @returns 任务ID到总时长的映射
+ */
+export const getWeeklyStats = (): Record<string, number> => {
+  const records = getTimeRecords();
   
   const stats: Record<string, number> = {};
-  dailyRecords.forEach(record => {
-    if (!stats[record.taskId]) {
-      stats[record.taskId] = 0;
-    }
-    stats[record.taskId] += record.duration;
-  });
+  records
+    .filter(record => isThisWeek(record.date))
+    .forEach(record => {
+      if (!stats[record.taskId]) {
+        stats[record.taskId] = 0;
+      }
+      stats[record.taskId] += record.duration * 60 * 1000;
+    });
   
   return stats;
 };
 
-// 按周汇总统计数据
-export const getWeeklyStats = (date: Date = new Date()): Record<string, number> => {
-  const startOfWeek = getWeekStart();
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-  
+/**
+ * 按月汇总统计数据
+ * @returns 任务ID到总时长的映射
+ */
+export const getMonthlyStats = (): Record<string, number> => {
   const records = getTimeRecords();
-  const weeklyRecords = records.filter(
-    record => 
-      record.date >= startOfWeek && 
-      record.date <= endOfWeek && 
-      record.duration > 0
-  );
   
   const stats: Record<string, number> = {};
-  weeklyRecords.forEach(record => {
-    if (!stats[record.taskId]) {
-      stats[record.taskId] = 0;
-    }
-    stats[record.taskId] += record.duration;
-  });
+  records
+    .filter(record => isThisMonth(record.date))
+    .forEach(record => {
+      if (!stats[record.taskId]) {
+        stats[record.taskId] = 0;
+      }
+      stats[record.taskId] += record.duration * 60 * 1000;
+    });
   
   return stats;
 };
 
-// 按月汇总统计数据
-export const getMonthlyStats = (date: Date = new Date()): Record<string, number> => {
-  const startOfMonth = getMonthStart();
-  const endOfMonth = new Date(date);
-  endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-  endOfMonth.setDate(0); // 设置为上个月最后一天，即本月最后一天
-  endOfMonth.setHours(23, 59, 59, 999);
-  
-  const records = getTimeRecords();
-  const monthlyRecords = records.filter(
-    record => 
-      record.date >= startOfMonth && 
-      record.date <= endOfMonth && 
-      record.duration > 0
-  );
-  
-  const stats: Record<string, number> = {};
-  monthlyRecords.forEach(record => {
-    if (!stats[record.taskId]) {
-      stats[record.taskId] = 0;
-    }
-    stats[record.taskId] += record.duration;
-  });
-  
-  return stats;
-};
-
-// 获取指定任务在指定时间段内的总时间
-export const getTaskTotalTime = (taskId: string, period: 'daily' | 'weekly' | 'monthly', date: Date = new Date()): number => {
-  let stats: Record<string, number>;
-  
+/**
+ * 获取指定时间段的统计
+ * @param period 统计周期
+ * @returns 任务ID到总时长的映射
+ */
+export const getStatsByPeriod = (period: StatsPeriod): Record<string, number> => {
   switch (period) {
     case 'daily':
-      stats = getDailyStats(date);
-      break;
+      return getDailyStats();
     case 'weekly':
-      stats = getWeeklyStats(date);
-      break;
+      return getWeeklyStats();
     case 'monthly':
-      stats = getMonthlyStats(date);
-      break;
+      return getMonthlyStats();
     default:
-      stats = {};
+      return {};
   }
-  
-  return stats[taskId] || 0;
 };
 
-// 获取所有任务的时间统计汇总
-export const getAllTasksStats = (period: 'daily' | 'weekly' | 'monthly', date: Date = new Date()) => {
-  const tasks = getTasks();
-  let stats: Record<string, number>;
+/**
+ * 获取所有任务的统计汇总
+ * @param period 统计周期
+ * @returns 任务统计项数组
+ */
+export const getAllTasksStats = (period: StatsPeriod): TaskStatItem[] => {
+  const stats = getStatsByPeriod(period);
+  const coreTask = getCoreTask();
+  const sideTasks = getSideTasks();
   
-  switch (period) {
-    case 'daily':
-      stats = getDailyStats(date);
-      break;
-    case 'weekly':
-      stats = getWeeklyStats(date);
-      break;
-    case 'monthly':
-      stats = getMonthlyStats(date);
-      break;
-    default:
-      stats = {};
+  const result: TaskStatItem[] = [];
+  
+  // 添加核心任务统计
+  if (coreTask) {
+    result.push({
+      taskId: coreTask.id,
+      taskName: coreTask.name,
+      taskType: 'core',
+      totalTime: stats[coreTask.id] || 0,
+      percentage: 0, // 后续计算
+    });
   }
   
-  return tasks.map(task => ({
-    task,
-    totalTime: stats[task.id] || 0,
-    percentage: 0 // 后续计算
-  }));
+  // 添加非核心任务统计
+  sideTasks.forEach(task => {
+    result.push({
+      taskId: task.id,
+      taskName: task.name,
+      taskType: 'side',
+      totalTime: stats[task.id] || 0,
+      percentage: 0,
+    });
+  });
+  
+  // 计算百分比
+  return calculatePercentages(result);
 };
 
-// 计算百分比
-export const calculatePercentages = (taskStats: Array<{ task: any, totalTime: number, percentage: number }>) => {
-  const totalDuration = taskStats.reduce((sum, item) => sum + item.totalTime, 0);
+/**
+ * 计算百分比
+ * @param items 任务统计项数组
+ * @returns 计算百分比后的数组
+ */
+export const calculatePercentages = (items: TaskStatItem[]): TaskStatItem[] => {
+  const totalDuration = items.reduce((sum, item) => sum + item.totalTime, 0);
   
   if (totalDuration === 0) {
-    return taskStats.map(item => ({ ...item, percentage: 0 }));
+    return items.map(item => ({ ...item, percentage: 0 }));
   }
   
-  return taskStats.map(item => ({
+  return items.map(item => ({
     ...item,
-    percentage: (item.totalTime / totalDuration) * 100
+    percentage: (item.totalTime / totalDuration) * 100,
   }));
+};
+
+/**
+ * 获取总时长
+ * @param period 统计周期
+ * @returns 总时长（毫秒）
+ */
+export const getTotalTime = (period: StatsPeriod): number => {
+  const stats = getAllTasksStats(period);
+  return stats.reduce((sum, item) => sum + item.totalTime, 0);
+};
+
+/**
+ * 获取图表颜色
+ * 根据索引返回对应的颜色
+ */
+export const CHART_COLORS = [
+  '#F26522', // 主色 - 橙色
+  '#FF9F5A', // 浅橙
+  '#FFCC9D', // 更浅橙
+  '#FFE9D6', // 最浅橙
+  '#3B82F6', // 蓝色
+  '#10B981', // 绿色
+  '#8B5CF6', // 紫色
+  '#EC4899', // 粉色
+  '#F59E0B', // 黄色
+  '#06B6D4', // 青色
+];
+
+/**
+ * 获取任务的颜色
+ * @param index 索引
+ * @returns 颜色代码
+ */
+export const getTaskColor = (index: number): string => {
+  return CHART_COLORS[index % CHART_COLORS.length];
 };
