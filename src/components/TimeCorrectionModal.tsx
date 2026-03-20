@@ -5,11 +5,34 @@
 
 import React, { useState, useEffect } from 'react';
 import { TaskType } from '../types';
+import { getDailyStats, getWeeklyStats, getMonthlyStats } from '../utils/stats';
 
-// 模拟函数：获取任务在指定时间范围内的总时长（分钟）
+/**
+ * 获取任务在指定时间范围内的总时长（分钟）
+ * @param taskId 任务ID
+ * @param period 时间范围（daily/weekly/monthly）
+ * @returns 时长（分钟）
+ */
 const getTaskTotalTimeInRange = (taskId: string, period: 'daily' | 'weekly' | 'monthly'): number => {
-  // TODO: 实现实际逻辑
-  return 0;
+  let stats: Record<string, number>;
+  
+  switch (period) {
+    case 'daily':
+      stats = getDailyStats();
+      break;
+    case 'weekly':
+      stats = getWeeklyStats();
+      break;
+    case 'monthly':
+      stats = getMonthlyStats();
+      break;
+    default:
+      return 0;
+  }
+  
+  // 将毫秒转换为分钟
+  const milliseconds = stats[taskId] || 0;
+  return Math.floor(milliseconds / (60 * 1000));
 };
 
 interface TimeCorrectionModalProps {
@@ -51,26 +74,24 @@ const TimeCorrectionModal: React.FC<TimeCorrectionModalProps> = ({
     onSave(period, totalMinutes);
   };
 
-  const adjustHours = (delta: number) => {
-    setHours(prev => Math.max(0, prev + delta));
-  };
-
-  const adjustMinutes = (delta: number) => {
-    setMinutes(prev => {
-      let newValue = prev + delta;
-      if (newValue >= 60) {
-        adjustHours(1);
-        newValue = 0;
-      } else if (newValue < 0) {
-        if (hours > 0) {
-          adjustHours(-1);
-          newValue = 59;
-        } else {
-          newValue = 0;
-        }
-      }
-      return newValue;
-    });
+  /**
+   * 调整时间，每次增加或减少15分钟
+   * @param deltaMinutes 调整的分钟数（正数增加，负数减少）
+   */
+  const adjustTime = (deltaMinutes: number) => {
+    const currentTotalMinutes = hours * 60 + minutes;
+    let newTotalMinutes = currentTotalMinutes + deltaMinutes;
+    
+    // 确保不小于0
+    if (newTotalMinutes < 0) {
+      newTotalMinutes = 0;
+    }
+    
+    const newHours = Math.floor(newTotalMinutes / 60);
+    const newMinutes = newTotalMinutes % 60;
+    
+    setHours(newHours);
+    setMinutes(newMinutes);
   };
 
   const getPeriodLabel = () => {
@@ -140,7 +161,7 @@ const TimeCorrectionModal: React.FC<TimeCorrectionModalProps> = ({
             <div className="flex items-center justify-between bg-orange-50/50 rounded-2xl p-4 border border-orange-100/50">
               {/* Decrease Button */}
               <button
-                onClick={() => adjustHours(-1)}
+                onClick={() => adjustTime(-10)}
                 className="w-10 h-10 rounded-full bg-[#FF6B00] text-white flex items-center justify-center active:scale-95 transition-transform shadow-sm"
               >
                 <span className="material-symbols-outlined text-2xl">remove</span>
@@ -158,7 +179,7 @@ const TimeCorrectionModal: React.FC<TimeCorrectionModalProps> = ({
 
               {/* Increase Button */}
               <button
-                onClick={() => adjustHours(1)}
+                onClick={() => adjustTime(10)}
                 className="w-10 h-10 rounded-full bg-[#FF6B00] text-white flex items-center justify-center active:scale-95 transition-transform shadow-sm"
               >
                 <span className="material-symbols-outlined text-2xl">add</span>

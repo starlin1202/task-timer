@@ -13,11 +13,13 @@ const PRIMARY_COLOR = '#F26522';
 const App: React.FC = () => {
   return (
     <Router>
-      <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-sans flex flex-col relative overflow-hidden h-screen max-w-lg mx-auto shadow-2xl">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/stats" element={<StatsPage />} />
-        </Routes>
+      <div className="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark font-sans flex flex-col relative overflow-hidden h-[100dvh] max-w-lg mx-auto shadow-2xl">
+        <div className="flex-1 overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))]">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/stats" element={<StatsPage />} />
+          </Routes>
+        </div>
         <BottomNav />
       </div>
     </Router>
@@ -26,6 +28,7 @@ const App: React.FC = () => {
 
 /**
  * 底部导航栏组件
+ * 使用 fixed 定位适配 iOS Safari 底部安全区域
  */
 const BottomNav: React.FC = () => {
   const location = useLocation();
@@ -33,7 +36,12 @@ const BottomNav: React.FC = () => {
   const isStats = location.pathname === '/stats';
 
   return (
-    <nav className="absolute bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-gray-100 dark:border-gray-800 shadow-nav z-20">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark border-t border-gray-100 dark:border-gray-800 shadow-nav z-50"
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}
+    >
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {/* 任务 Tab */}
         <Link
@@ -75,8 +83,6 @@ const BottomNav: React.FC = () => {
           </span>
         </Link>
       </div>
-      {/* Safe Area */}
-      <div className="h-6 bg-surface-light dark:bg-surface-dark" />
     </nav>
   );
 };
